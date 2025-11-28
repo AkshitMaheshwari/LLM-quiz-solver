@@ -568,36 +568,36 @@
 
                 const data = await response.json();
 
-                showLoading(false);
-
                 if (response.ok) {
-                    showResponse(
-                        'success',
-                        'Quiz Submission Successful',
-                        `Status: ${data.status}\n\nMessage: ${data.message}\n\nYour quiz is now being processed. Check back in a few minutes for results.`,
-                        data
-                    );
+                    // Start polling
+                    pollStatus(data.task_id);
                 } else if (response.status === 403) {
+                    showLoading(false);
                     showResponse(
                         'error',
                         'Authentication Error',
                         'Invalid email or secret key. Please check your credentials and try again.',
                         data
                     );
+                    submitBtn.disabled = false;
                 } else if (response.status === 400) {
+                    showLoading(false);
                     showResponse(
                         'error',
                         'Invalid Request',
                         'One or more required fields are missing or invalid.',
                         data
                     );
+                    submitBtn.disabled = false;
                 } else {
+                    showLoading(false);
                     showResponse(
                         'error',
                         'Server Error',
                         `An error occurred: ${data.detail || 'Unknown error'}`,
                         data
                     );
+                    submitBtn.disabled = false;
                 }
             } catch (error) {
                 showLoading(false);
@@ -607,10 +607,73 @@
                     `Failed to connect to the server. Error: ${error.message}`,
                     null
                 );
-            } finally {
                 submitBtn.disabled = false;
             }
         });
+
+        async function pollStatus(taskId) {
+            const pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/quiz/status/${taskId}`);
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        // Update UI with logs
+                        updateLogs(data.logs);
+                        
+                        if (data.status === 'completed') {
+                            clearInterval(pollInterval);
+                            showLoading(false);
+                            document.getElementById('submitBtn').disabled = false;
+                            showResponse(
+                                'success',
+                                'Quiz Completed',
+                                'All quizzes have been successfully processed.',
+                                data
+                            );
+                        } else if (data.status === 'failed') {
+                            clearInterval(pollInterval);
+                            showLoading(false);
+                            document.getElementById('submitBtn').disabled = false;
+                            showResponse(
+                                'error',
+                                'Quiz Failed',
+                                `Processing failed: ${data.result?.error || 'Unknown error'}`,
+                                data
+                            );
+                        }
+                    }
+                } catch (error) {
+                    console.error('Polling error:', error);
+                }
+            }, 2000);
+        }
+        
+        function updateLogs(logs) {
+            // Create or update a log container in the response area
+            let logContainer = document.getElementById('logContainer');
+            if (!logContainer) {
+                const content = document.getElementById('responseContent');
+                logContainer = document.createElement('div');
+                logContainer.id = 'logContainer';
+                logContainer.style.marginTop = '20px';
+                logContainer.style.padding = '15px';
+                logContainer.style.background = '#f5f5f5';
+                logContainer.style.borderRadius = '8px';
+                logContainer.style.maxHeight = '300px';
+                logContainer.style.overflowY = 'auto';
+                logContainer.style.fontFamily = 'monospace';
+                logContainer.style.fontSize = '12px';
+                logContainer.style.whiteSpace = 'pre-wrap';
+                
+                const container = document.getElementById('responseContainer');
+                container.classList.add('show');
+                content.appendChild(logContainer);
+            }
+            
+            logContainer.innerHTML = logs.map(log => `<div>${log}</div>`).join('');
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
 
         // Show loading spinner
         function showLoading(show) {
