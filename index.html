@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Analysis Quiz Solver</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #4ade80;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="url"],
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="password"]:focus,
+        input[type="url"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 13px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-reset {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-reset:hover {
+            background: #e0e0e0;
+        }
+
+        .response-container {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .response-container.show {
+            display: block;
+        }
+
+        .response-success {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            color: #065f46;
+        }
+
+        .response-error {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            color: #7f1d1d;
+        }
+
+        .response-info {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            color: #1e3a8a;
+        }
+
+        .response-header {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .response-body {
+            font-size: 13px;
+            line-height: 1.6;
+            word-break: break-word;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading-spinner.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f0f0f0;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spinner-text {
+            margin-top: 10px;
+            color: #666;
+            font-size: 13px;
+        }
+
+        .info-box {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 25px;
+            font-size: 13px;
+            color: #4b5563;
+            line-height: 1.6;
+        }
+
+        .info-box strong {
+            color: #1f2937;
+        }
+
+        .copy-button {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 0;
+            margin-left: 8px;
+            text-decoration: underline;
+        }
+
+        .copy-button:hover {
+            color: #764ba2;
+        }
+
+        .response-json {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .tab-button {
+            padding: 10px 15px;
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .api-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #f0fdf4;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        .api-status.offline {
+            background: #fef2f2;
+            color: #991b1b;
+        }
+
+        .api-status.offline .status-indicator {
+            background-color: #ef4444;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .content {
+                padding: 25px 20px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Quiz Solver</h1>
+            <p>Powered by Groq LLM</p>
+            <p style="font-size: 12px; margin-top: 10px;">
+                <span class="status-indicator"></span>
+                Server Status: Online
+            </p>
+        </div>
+
+        <div class="content">
+            <!-- API Status Check -->
+            <div id="apiStatus" class="api-status">
+                <span class="status-indicator"></span>
+                <span id="statusText">Checking API status...</span>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-button active" onclick="switchTab('submit')">Submit Quiz</button>
+                <button class="tab-button" onclick="switchTab('documentation')">Documentation</button>
+            </div>
+
+            <!-- Submit Tab -->
+            <div id="submit" class="tab-content active">
+                <div class="info-box">
+                    <strong>📝 Instructions:</strong> Enter your credentials and the quiz URL below. The system will automatically fetch, analyze, and solve the quiz using AI.
+                </div>
+
+                <form id="quizForm">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            placeholder="student@example.com" 
+                            required
+                        >
+                        <div class="form-hint">Your registered email address</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="secret">Secret Key</label>
+                        <input 
+                            type="password" 
+                            id="secret" 
+                            name="secret" 
+                            placeholder="Enter your secret key" 
+                            required
+                        >
+                        <div class="form-hint">Your unique secret key for authentication</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="url">Quiz URL</label>
+                        <input 
+                            type="url" 
+                            id="url" 
+                            name="url" 
+                            placeholder="https://example.com/quiz-123" 
+                            required
+                        >
+                        <div class="form-hint">The URL of the quiz you want to solve</div>
+                    </div>
+
+                    <div class="button-group">
+                        <button type="submit" class="btn-submit" id="submitBtn">Solve Quiz</button>
+                        <button type="reset" class="btn-reset" onclick="clearResponse()">Clear</button>
+                    </div>
+                </form>
+
+                <!-- Loading Spinner -->
+                <div id="loadingSpinner" class="loading-spinner">
+                    <div class="spinner"></div>
+                    <div class="spinner-text">Processing quiz... This may take a few minutes.</div>
+                </div>
+
+                <!-- Response Container -->
+                <div id="responseContainer" class="response-container">
+                    <div id="responseContent"></div>
+                </div>
+            </div>
+
+            <!-- Documentation Tab -->
+            <div id="documentation" class="tab-content">
+                <div class="info-box">
+                    <strong>📚 API Documentation</strong>
+                </div>
+
+                <h3 style="margin-top: 20px; margin-bottom: 10px; color: #333; font-size: 15px;">
+                    POST /quiz
+                </h3>
+                <p style="color: #666; font-size: 13px; margin-bottom: 15px;">
+                    Submit a quiz to be solved by the AI system.
+                </p>
+
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-family: 'Courier New', monospace; font-size: 12px;">
+                    <pre style="overflow-x: auto;">{
+  "email": "student@example.com",
+  "secret": "your-secret-key",
+  "url": "https://example.com/quiz-123"
+}</pre>
+                </div>
+
+                <h4 style="color: #333; font-size: 13px; margin-bottom: 8px;">Responses:</h4>
+                <div style="font-size: 12px; color: #666; line-height: 1.8;">
+                    <p><strong style="color: #10b981;">200 OK:</strong> Quiz accepted and processing started</p>
+                    <p><strong style="color: #ef4444;">400 Bad Request:</strong> Invalid JSON or missing fields</p>
+                    <p><strong style="color: #ef4444;">403 Forbidden:</strong> Invalid credentials</p>
+                </div>
+
+                <h3 style="margin-top: 25px; margin-bottom: 10px; color: #333; font-size: 15px;">
+                    GET /health
+                </h3>
+                <p style="color: #666; font-size: 13px;">
+                    Check if the API server is running.
+                </p>
+
+                <h4 style="color: #333; font-size: 13px; margin-top: 15px; margin-bottom: 8px;">Example Response:</h4>
+                <div style="background: #f5f5f5; padding: 12px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 12px;">
+                    <pre>{"status": "ok"}</pre>
+                </div>
+
+                <div class="info-box" style="margin-top: 25px;">
+                    <strong>⚡ Tips:</strong>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>Keep your secret key confidential</li>
+                        <li>Quiz processing typically takes 15-30 seconds</li>
+                        <li>The system supports multiple file formats (PDF, CSV, JSON, images)</li>
+                        <li>You have a 3-minute window to submit answers</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:8000';
+        
+        // Check API status on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkApiStatus();
+            setInterval(checkApiStatus, 30000); // Check every 30 seconds
+        });
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Check API Status
+        async function checkApiStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`, {
+                    method: 'GET',
+                    timeout: 5000
+                });
+                
+                if (response.ok) {
+                    updateApiStatus(true);
+                } else {
+                    updateApiStatus(false);
+                }
+            } catch (error) {
+                updateApiStatus(false);
+            }
+        }
+
+        function updateApiStatus(isOnline) {
+            const statusEl = document.getElementById('apiStatus');
+            const statusText = document.getElementById('statusText');
+            
+            if (isOnline) {
+                statusEl.classList.remove('offline');
+                statusText.textContent = '✓ API Server is online and responding';
+            } else {
+                statusEl.classList.add('offline');
+                statusText.textContent = '✗ API Server is offline. Please check your connection.';
+            }
+        }
+
+        // Form submission
+        document.getElementById('quizForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const secret = document.getElementById('secret').value;
+            const url = document.getElementById('url').value;
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+
+            showLoading(true);
+            clearResponse();
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/quiz`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        secret: secret,
+                        url: url
+                    })
+                });
+
+                const data = await response.json();
+
+                showLoading(false);
+
+                if (response.ok) {
+                    showResponse(
+                        'success',
+                        'Quiz Submission Successful',
+                        `Status: ${data.status}\n\nMessage: ${data.message}\n\nYour quiz is now being processed. Check back in a few minutes for results.`,
+                        data
+                    );
+                } else if (response.status === 403) {
+                    showResponse(
+                        'error',
+                        'Authentication Error',
+                        'Invalid email or secret key. Please check your credentials and try again.',
+                        data
+                    );
+                } else if (response.status === 400) {
+                    showResponse(
+                        'error',
+                        'Invalid Request',
+                        'One or more required fields are missing or invalid.',
+                        data
+                    );
+                } else {
+                    showResponse(
+                        'error',
+                        'Server Error',
+                        `An error occurred: ${data.detail || 'Unknown error'}`,
+                        data
+                    );
+                }
+            } catch (error) {
+                showLoading(false);
+                showResponse(
+                    'error',
+                    'Connection Error',
+                    `Failed to connect to the server. Error: ${error.message}`,
+                    null
+                );
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Show loading spinner
+        function showLoading(show) {
+            const spinner = document.getElementById('loadingSpinner');
+            if (show) {
+                spinner.classList.add('show');
+            } else {
+                spinner.classList.remove('show');
+            }
+        }
+
+        // Show response
+        function showResponse(type, header, body, jsonData) {
+            const container = document.getElementById('responseContainer');
+            const content = document.getElementById('responseContent');
+
+            let html = `
+                <div class="response-${type}">
+                    <div class="response-header">
+                        ${type === 'success' ? '✓' : '✗'} ${header}
+                    </div>
+                    <div class="response-body">
+                        ${body.replace(/\n/g, '<br>')}
+                    </div>
+            `;
+
+            if (jsonData) {
+                html += `
+                    <div class="response-json" style="margin-top: 15px;">
+                        <strong style="color: #333;">Raw Response:</strong>
+                        <pre style="margin-top: 8px;">${JSON.stringify(jsonData, null, 2)}</pre>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+
+            content.innerHTML = html;
+            container.classList.add('show');
+
+            // Scroll to response
+            setTimeout(() => {
+                container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
+
+        // Clear response
+        function clearResponse() {
+            document.getElementById('responseContainer').classList.remove('show');
+            document.getElementById('responseContent').innerHTML = '';
+            showLoading(false);
+        }
+
+        // Copy to clipboard
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>

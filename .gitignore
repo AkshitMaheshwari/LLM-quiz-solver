@@ -1,0 +1,13 @@
+# Virtual environments
+CHECKLIST.md
+DEPLOYMENT.md
+DESIGN.md
+FROTEND_GUIDE.md
+QUICKSTART.md
+SUMMARY.md
+INDEX.md
+
+__pycache__/
+
+.env
+
