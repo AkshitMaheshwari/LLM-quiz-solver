@@ -3,6 +3,7 @@ import re
 import json
 import base64
 import asyncio
+import sys
 from datetime import datetime, timedelta
 from typing import Optional, Any
 import requests
@@ -20,6 +21,10 @@ from quiz_solver import QuizSolver
 
 # Load environment variables
 load_dotenv()
+
+# Fix for Windows Event Loop (Playwright requires ProactorEventLoop)
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 # Configuration
 STUDENT_EMAIL = os.getenv("STUDENT_EMAIL", "")
@@ -214,9 +219,11 @@ async def process_quiz_chain(task_id: str, email: str, secret: str, initial_url:
                     break
                     
         except Exception as e:
-            log(f"Error processing quiz: {str(e)}")
+            import traceback
+            error_details = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
+            log(f"Error processing quiz: {error_details}")
             quiz_results[task_id]["status"] = "failed"
-            quiz_results[task_id]["result"] = {"error": str(e)}
+            quiz_results[task_id]["result"] = {"error": str(e) or "Unknown error occurred"}
             break
         
         await asyncio.sleep(1)  # Rate limiting
